@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://media.twiliocdn.com/sdk/js/common/v0.1/twilio-common.js"></script>
+    <script src="https://media.twiliocdn.com/sdk/js/chat/v3.0/twilio-chat.js"></script>
+  </head>
+  <body>
+    <input type="file" id="file" name="file" disabled/><br>
+    <input type="button" id="check" value="Check Uploaded Content">
+    <script>
+     (function() {
+
+       const channelSid = 'CHXXXXXXXXXXXXXXXXXXXXXXXXX';
+       fetch('/token')
+         .then(response => {
+           if (response.ok) {
+             return response.text();
+           }
+           throw new Error();
+         })
+         .then(token => {
+           console.log(`token => ${token}`)
+           return Twilio.Chat.Client.create(token, { loglevel: "debug" });
+         })
+         .then(client => {
+           console.log(client);
+
+           document.getElementById('file').addEventListener('change', evt => {
+             const file = evt.target.files[0];
+             if (file) {
+               client.getChannelBySid(channelSid).then(channel => {
+                 const formData = new FormData();
+                 formData.append('file', file);
+                 channel.sendMessage(formData).then(result => {
+                   console.log(`idx => ${result}`);
+                 });
+               });
+             }
+           }, false);
+           document.getElementById('file').disabled = false;
+
+           document.getElementById('check').addEventListener('click', evt => {
+             client.getChannelBySid(channelSid).then(channel => {
+               channel.getMessages().then(messagesPaginator => {
+                 messagesPaginator.items.forEach((message, i) => {
+                   if (message.type === 'media') {
+                     console.log('Message is media message');
+                     console.log('Media attributes', message.media);
+                     message.media.getContentUrl().then(url => {
+                       console.log('Media temporary URL is ' + url);
+                     });
+                   }
+                 });
+               });
+             });
+           });
+         })
+         .catch(error => console.log('Error occured.', error) || error);
+     })();
+    </script>
+  </body>
+</html>
